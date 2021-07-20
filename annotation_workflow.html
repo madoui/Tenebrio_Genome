@@ -1,0 +1,1316 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title></title></head><body><h1>Table of Contents</h1>
+
+<ul>
+<li><a href="#annotation-pipeline">Annotation Pipeline</a>
+
+<ul>
+<li><a href="#masking-genome">Masking genome</a></li>
+<li><a href="#mrna-assembly">mRNA assembly</a>
+
+<ul>
+<li><a href="#oases">Oases</a></li>
+<li><a href="#splitcontigs">SplitContigs</a></li>
+</ul></li>
+<li><a href="#mapping-mrna-contigs-to-genome">Mapping mRNA contigs to genome</a></li>
+<li><a href="#mapping-proteomes-to-genome">Mapping proteomes to genome</a></li>
+<li><a href="#gmove">Gmove</a>
+
+<ul>
+<li><a href="#remove-single-exon-transcripts-specific-to-1-sample">remove single-exon transcripts specific to 1 sample</a></li>
+<li><a href="#split-gmove-input-files">split gmove input files</a></li>
+<li><a href="#launch-gmove">launch gmove</a></li>
+<li><a href="#merge-gmove-output">merge gmove output</a></li>
+<li><a href="#statistics-of-gmove-gene-model-predictions">statistics of gmove gene model predictions</a></li>
+<li><a href="#get-the-proteins-and-virtual-mrna">get the proteins and virtual mRNA</a></li>
+</ul></li>
+<li><a href="#post-gmove-filtering">post-gmove filtering</a>
+
+<ul>
+<li><a href="#utr-trimming">UTR trimming</a></li>
+<li><a href="#rnaseq-only-predictions">RNAseq-only predictions</a></li>
+<li><a href="#gmove-mrnas-with-utrutrcds--80">gmove mRNAs with UTR/(UTR+CDS) &gt; 80%</a></li>
+<li><a href="#single-exon-genes">single-exon genes</a></li>
+<li><a href="#blastp-diamond">blastp diamond</a></li>
+<li><a href="#pfam-domains">pfam domains</a></li>
+<li><a href="#repeatmodeler">RepeatModeler</a></li>
+<li><a href="#transposonpsi">TransposonPSI</a></li>
+<li><a href="#intersect-single-exon-genes-with-cdss-of-mrna-and-protein-transcripts">intersect single-exon genes with CDSs of mRNA and protein transcripts</a></li>
+<li><a href="#genes-to-remove">genes to remove</a></li>
+<li><a href="#final-genes">final genes</a></li>
+</ul></li>
+<li><a href="#busco">Busco</a></li>
+<li><a href="#brh-best-reciprocal-hits">BRH (Best Reciprocal Hits)</a></li>
+</ul></li>
+</ul>
+
+<p>Created by <a href="https://github.com/ekalinin/github-markdown-toc">gh-md-toc</a></p>
+
+<p><a name="annotation-pipeline"></a></p>
+
+<h1>Annotation Pipeline</h1>
+
+<p>Firstly, the relevant modules need to be loaded:</p>
+
+<pre><code class="bash">$ module load extenv/rdbioseq annotation
+</code></pre>
+
+<p><a name="masking-genome"></a></p>
+
+<h2>Masking genome</h2>
+
+<p>Regions of low complexity in the assembly were masked with the DustMasker algorithms <a href="https://pubmed.ncbi.nlm.nih.gov/16796549/">DUST</a>(version 1.0.0 from the blast 2.10.0 package).
+Transposable elements (TEs) were annotated using <a href="http://repeatmasker.org/">RepeatMasker</a> (version open-4.0.5), rmblastn (version 2.10.0+) and the genomic sequences were compared to classified sequences in RM database /env/export/v<em>info/q</em>soft/ig/repeatmasker-4.0.5/el6-noarch/Libraries/RepeatMaskerLib.embl ( Complete Database: 20150807 ). The custom library used was: /env/ig/biobank/by-soft/repeatmasker/4.0.5/Libraries/RepeatMasker.lib</p>
+
+<p>Masking was launched using <code>meg</code> script:</p>
+
+<pre><code class="bash">$ meg -BMCMD msub -f Tenebrio_molitor_v1_WITH_MITO.fasta -dir masking_with_old_library -lib /env/ig/biobank/by-soft/repeatmasker/4.0.5/Libraries/RepeatMasker.lib -nbr_cores_repeatMasker 20 -rps
+</code></pre>
+
+<p>The above script launches also RepeatMasker with the <code>-noint</code> option for detection of Simple repeats:</p>
+
+<blockquote>
+<p>When using the -noint or -int option only low complexity DNA and
+simple repeats will be masked in the query sequence.
+Inexact simple repeats may be spanned and hidden by an interspersed
+repeat annotation.  In particular, most A-rich simple repeats derived
+from the poly A tails of SINEs and LINES are merged with the
+annotation of the SINE or LINE (i.e. you can&#39;t tell there is a simple
+repeat). Thus, if you&#39;re interested in finding the location of
+potentially polymorphic simple repeats, this option is recommended.</p>
+</blockquote>
+
+<p>We also launched <code>meg</code> with <code>-rps</code> option for ab initio detection of repeats by using RepeatScout.
+Combined Database: CONS-Dfam_3.1, rmblastn (version 2.10.0+) and the genomic sequences were compared to unclassified sequences in &ldquo;repeatlib_sup10&rdquo;.</p>
+
+<p>Path for the results : </p>
+
+<blockquote>
+<p>/env/cns/proj/projet_CPD/RESULTS/FINAL/Hi-C_with_SALSA2/parallel/SCAFFOLDS/masking_with_old_library_scaffolds_v1_Mito_included/masking_old_library_scaffolds_v1_plus_MITO/</p>
+</blockquote>
+
+<p>The file containing the masked genome is: genome.msk.fa</p>
+
+<p>However, it might also be interested to have a look at these tables:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPD/RESULTS/FINAL/Hi-C_with_SALSA2/parallel/SCAFFOLDS/masking_with_old_library_scaffolds_v1_Mito_included/masking_old_library_scaffolds_v1_plus_MITO/RepeatMasker_RPT_LIB/input_genome.fa.tbl
+$ /env/cns/proj/projet_CPD/RESULTS/FINAL/Hi-C_with_SALSA2/parallel/SCAFFOLDS/masking_with_old_library_scaffolds_v1_Mito_included/masking_old_library_scaffolds_v1_plus_MITO/RepeatMasker_Simple/input_genome.fa.tbl
+$ /env/cns/proj/projet_CPD/RESULTS/FINAL/Hi-C_with_SALSA2/parallel/SCAFFOLDS/masking_with_old_library_scaffolds_v1_Mito_included/masking_old_library_scaffolds_v1_plus_MITO/Scout/input_genome.fa.tbl
+</code></pre>
+
+<p><a name="mrna-assembly"></a></p>
+
+<h2>mRNA assembly</h2>
+
+<p><a name="oases"></a></p>
+
+<h3>Oases</h3>
+
+<p>RNAseq Illumina reads are assembled with <a href="https://github.com/dzerbino/oases">Oases</a> (version 0.2.08)</p>
+
+<p>We have 6 transcriptomes, from various developmental stages, to assemble:</p>
+
+<ul>
+<li>AE: female pupa</li>
+<li>AF: female adult</li>
+<li>AH: sterile larva</li>
+<li>AI: sterile male adult</li>
+<li>AJ: sterile juvenile</li>
+<li>AK: sterile male pupa</li>
+</ul>
+
+<pre><code class="bash">$ kmer=81
+$ date=10042020
+$ for proj in CPF; do for mat in AE AF AH AI AJ AK; do
+$ dirout=oases_K${kmer}_${date}_${proj}_${mat}
+$ mkdir -p /env/cns/proj/projet_${proj}/scratch/${mat}/${dirout}
+$ cd /env/cns/proj/projet_${proj}/scratch/${mat}/${dirout}
+$ jobify --chrono -b  -o oases.slurmout -e oases.slurmerr -p xlarge /env/cns/proj/projet_CSU/Annotation/LaunchOases_slurm16 -p${proj} -m ${mat} -o ${dirout} -k ${kmer} 
+$ done
+$ done
+</code></pre>
+
+<p>All the results of the assembly are here:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPF/scratch/AE/oases_K81_10042020_CPF_AE/transcripts.fa
+$ /env/cns/proj/projet_CPF/scratch/AF/oases_K81_10042020_CPF_AF/transcripts.fa
+$ /env/cns/proj/projet_CPF/scratch/AH/oases_K81_10042020_CPF_AH/transcripts.fa
+$ /env/cns/proj/projet_CPF/scratch/AI/oases_K81_10042020_CPF_AI/transcripts.fa
+$ /env/cns/proj/projet_CPF/scratch/AJ/oases_K81_10042020_CPF_AJ/transcripts.fa
+$ /env/cns/proj/projet_CPF/scratch/AK/oases_K81_10042020_CPF_AK/transcripts.fa
+</code></pre>
+
+<p>Then, 2 more steps follow:</p>
+
+<ul>
+<li>for cleaning 5&#39; and 3&#39;, masking low-complexity sequences (with DustMasker) and retaining sequences with minimum length 150bp and minimum 75% of &ldquo;uppercase&rdquo; (unmasked) bases:</li>
+</ul>
+
+<pre><code class="bash">$ for mat in AE AF AH AI AJ AK; 
+$ do
+$ cd $mat;
+$ cd oases*;
+$ /env/cns/proj/projet_CSU/Annotation/cleanFasta_short -f transcripts.fa -out transcripts_clean.fa;
+$ ..2;
+$ done;
+</code></pre>
+
+<ul>
+<li>and for modifying the headers of contigs:</li>
+</ul>
+
+<pre><code class="bash">$ for mat in AE AF AH AI AJ AK; 
+$ do
+$ cd $mat;
+$ cd oases*;
+$ jobify --chrono -b -p small /env/cns/proj/projet_CSU/Annotation/header_for_6_samples.sh CPF $mat;
+$ ..2;
+$ done;
+</code></pre>
+
+<p>The results after these 2 modifications:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPF/scratch/AE/oases_K81_10042020_CPF_AE/CPFAEtranscripts_clean.fa
+$ /env/cns/proj/projet_CPF/scratch/AF/oases_K81_10042020_CPF_AF/CPFAFtranscripts_clean.fa
+$ /env/cns/proj/projet_CPF/scratch/AH/oases_K81_10042020_CPF_AH/CPFAHtranscripts_clean.fa
+$ /env/cns/proj/projet_CPF/scratch/AI/oases_K81_10042020_CPF_AI/CPFAItranscripts_clean.fa
+$ /env/cns/proj/projet_CPF/scratch/AJ/oases_K81_10042020_CPF_AJ/CPFAJtranscripts_clean.fa
+$ /env/cns/proj/projet_CPF/scratch/AK/oases_K81_10042020_CPF_AK/CPFAKtranscripts_clean.fa
+</code></pre>
+
+<p>Later, we decide to include into our analysis 2 more samples from NCBI (<code>https://www.ncbi.nlm.nih.gov/sra?linkname=bioproject_sra_all&amp;from_uid=646689</code>): AA, AB </p>
+
+<blockquote>
+<p>RNA was extracted from 150 insects of various developmental stages (larvae, pupae, adults), sex (females and males) and physiological conditions. Physiological conditions were of four types: insects were challenged with either Bacillus thuringiensis (Pasteur Institute CIP53.1) or Seratia Entomophila (Pasteur Institute CIP102919), other insects were injected by phenobarbital (0,1%), control insects with no challenge and no injection. RNA was extracted by eurofins mwg operon.</p>
+</blockquote>
+
+<p>In this case, we set a lower kmer size because reads are 100bp long (instead of 150).</p>
+
+<pre><code class="bash">$ kmer=63
+$ date=28112020
+$ for proj in CUH; do for mat in AA AB; do
+$ dirout=oases_K${kmer}_${date}_${proj}_${mat}
+$ mkdir -p /env/cns/proj/projet_${proj}/scratch/${mat}/${dirout}
+$ cd /env/cns/proj/projet_${proj}/scratch/${mat}/${dirout}
+$ jobify --chrono -b  -o oases.slurmout -e oases.slurmerr -p xlarge /env/cns/proj/projet_CSU/Annotation/LaunchOases_slurm16_${mat} -p ${proj} -m ${mat} -o ${dirout} -k ${kmer} 
+$ done
+$ done
+</code></pre>
+
+<p>The outpout of Oases for samples AA and AB are files: </p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CUH/scratch/Oases/AA/oases_K63_28112020_CUH_AA/transcripts.fa
+$ /env/cns/proj/projet_CUH/scratch/Oases/AB/oases_K63_28112020_CUH_AB/transcripts.fa
+</code></pre>
+
+<p>Afterwards, we clean 5&#39; and 3&#39;, mask low-complexity sequences by using DustMasker and select sequences with minimum 100bp and minimum 75% of &ldquo;uppercase&rdquo; bases.</p>
+
+<pre><code class="bash">$ for mat in AA AB; 
+$ do
+$ cd $mat;
+$ cd oases_K63*;
+$ /env/cns/proj/projet_CSU/Annotation/cleanFasta_short_AA_AB -f transcripts.fa -out transcripts_clean_NEW.fa;
+$ ..2;
+$ done;
+</code></pre>
+
+<p>The outpout of &ldquo;cleaning&rdquo; for samples AA and AB are files: </p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CUH/scratch/Oases/AA/oases_K63_28112020_CUH_AA/transcripts_clean_NEW.fa
+$ /env/cns/proj/projet_CUH/scratch/Oases/AB/oases_K63_28112020_CUH_AB/transcripts_clean_NEW.fa
+</code></pre>
+
+<p>Now, we modify the header of contigs:</p>
+
+<pre><code class="bash">$ proj=CUH
+$ for mat in AA AB; 
+$ do
+$ cd $mat;
+$ cd oases_K63*;
+$ jobify  --chrono -b -p small /env/cns/proj/projet_CSU/Annotation/header.sh $proj $mat;
+$ ..2;
+$ done;
+</code></pre>
+
+<p>And the new files for samples AA and AB are : </p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CUH/scratch/Oases/AA/oases_K63_28112020_CUH_AA/CUHAAtranscripts_clean.fa
+$ /env/cns/proj/projet_CUH/scratch/Oases/AB/oases_K63_28112020_CUH_AB/CUHABtranscripts_clean.fa
+</code></pre>
+
+<p><a name="splitcontigs"></a></p>
+
+<h3>SplitContigs</h3>
+
+<p><strong>splitC_pegasus</strong> is a homemade script for splitting chimeric contigs. Assembly tools often erroneously merge sequences into one single contig. Splitting a contig into regions where different ORFs appear, or regions where abrupt shifts in read-coverage occur, could streamline the gene-prediction process. Based on combined resources such as the pileup-coverage, the research of ORFs (Transdecoder) and domains (runCDDsearch-like), this tool aims to split contigs in an adequate way so that sequences with different functional sites form different contigs.</p>
+
+<blockquote>
+<p>For more info on this script look at: /env/cns/proj/bureautique/info/RD_BioSeq/Anciens membres/alexis/bilan_splitContigs.pdf</p>
+</blockquote>
+
+<p>Firstly, we need to export the the following paths and to load several modules:</p>
+
+<pre><code class="bash">$ export PATH=$PATH:/env/cns/src/hmmer/hmmer-3.1b1-linux-intel-x86_64/src
+$ export PATH=$PATH:/env/cns/src/TransDecoder/TransDecoder_r20131117/3rd_party
+$ export PATH=$PATH:/env/cns/src/CDhit/cd-hit-v4.6.1-2012-08-27
+$ module load extenv/rdbioseq
+$ module load extenv/lage
+$ module load cddsearch
+$ module load commontools/snapshot
+$ module load mapping
+$ module load annotation
+</code></pre>
+
+<p>Subsequently, we launch <code>splitC_pegasus</code>:</p>
+
+<pre><code class="bash">$ for i in AE,12BA090 AF,12BA091 AH,12BA093 AI,12BA094 AJ,12BA095 AK,12BA096;
+$ do IFS=&quot;,&quot;;
+$ set -- $i;
+$ cd $1;
+$ cd oases*;
+$ jobify -b -J SPLITCONTIGS_$1 -q normal -c 36 -e SPLITCONTIGS_CPF_$1.err -o SPLITCONTIGS_CPF_$1.out --qos=h72 perl splitC_pegasus -name SPLITCONTIGS_CPF_$1 -output ./ -project CPF -material $1 -contigs /pathTo/projet_CPF/$1/oases_K81_10042020_CPF_$1/CPF${1}transcripts_clean.fa -index is -reads /env/cns/proj/projet_CPF/$1/RunsSolexa/200305_JARVIS_H2TK3DSXY/CPF_${1}OSRB_4_1_H2TK3DSXY.${2}_noribo_clean.fastq.gz\@/env/cns/proj/projet_CPF/$1/RunsSolexa/200305_JARVIS_H2TK3DSXY/CPF_${1}OSRB_4_2_H2TK3DSXY.${2}_noribo_clean.fastq.gz /env/cns/proj/projet_CPF/$1/RunsSolexa/200218_MIMOSA_CVTP3/CPF_${1}OSRB_1_1_CVTP3.${2}_noribo_clean.fastq.gz\@/env/cns/proj/projet_CPF/$1/RunsSolexa/200218_MIMOSA_CVTP3/CPF_${1}OSRB_1_2_CVTP3.${2}_noribo_clean.fastq.gz -decompress -norm -search_pfam -stranded -threads 36;
+..2;
+$ done;
+</code></pre>
+
+<p>The split contigs are in the following fasta files:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AE/CPF_AE_226/CPF_AE_226.contigs_split_stranded_95.fa
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AF/CPF_AF_963/CPF_AF_963.contigs_split_stranded_95.fa
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AH/CPF_AH_613/CPF_AH_613.contigs_split_stranded_95.fa
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AI/CPF_AI_660/CPF_AI_660.contigs_split_stranded_95.fa
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AJ/CPF_AJ_759/CPF_AJ_759.contigs_split_stranded_95.fa
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AK/CPF_AK_548/CPF_AK_548.contigs_split_stranded_95.fa
+</code></pre>
+
+<p>but, in general, the results of <code>splitC_pegasus</code> are in the directories:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AE/CPF_AE_226/
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AF/CPF_AF_963/
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AH/CPF_AH_613/
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AI/CPF_AI_660/
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AJ/CPF_AJ_759/
+$ /env/cns/proj/projet_CPF/RESULTS/FINAL/Oases_K81_10042020_Assembly/AK/CPF_AK_548/
+</code></pre>
+
+<p>We repeat the &ldquo;splitting&rdquo; process for AA, AB samples: </p>
+
+<pre><code class="bash">$ jobify -b -J SpCo_AA -q normal -c 36 -e SpCo_AA.err -o SpCo_AA.out --qos=h72 perl splitC_pegasus -name SPLITCONTIGS_CUH_AA -output SpCo_AA -project CUH -material AA -contigs /pathTo/CUHAAtranscripts_clean.fa -index is -reads /env/cns/proj/projet_CUH/AA/RunsSolexa/201125_EXTHISEQ_C3881ACXX/CUH_AAOSRA_1_1_C3881ACXX_noribo_clean.fastq.gz\@/env/cns/proj/projet_CUH/AA/RunsSolexa/201125_EXTHISEQ_C3881ACXX/CUH_AAOSRA_1_2_C3881ACXX_noribo_clean.fastq.gz -decompress -norm -search_pfam -stranded -threads 36;
+$ jobify -b -J SpCo_AB -q normal -c 36 -e SpCo_AB.err -o SpCo_AB.out --qos=h72 perl splitC_pegasus -name SPLITCONTIGS_CUH_AB -output SpCo_AB -project CUH -material AB -contigs /pathTo/CUHABtranscripts_clean.fa -index is -reads /env/cns/proj/projet_CUH/AB/RunsSolexa/201125_EXTHISEQ_C3881ACXX/CUH_ABOSRA_2_1_C3881ACXX_noribo_clean.fastq.gz\@/env/cns/proj/projet_CUH/AB/RunsSolexa/201125_EXTHISEQ_C3881ACXX/CUH_ABOSRA_2_2_C3881ACXX_noribo_clean.fastq.gz -decompress -norm -search_pfam -stranded -threads 36;
+</code></pre>
+
+<p>The output of &ldquo;splitting&rdquo; are the following fasta files:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CUH/scratch/SplitContigs/AA/SpCo_AA/CUH_AA_489/CUH_AA_489.contigs_split_stranded_95.fa
+$ /env/cns/proj/projet_CUH/scratch/SplitContigs/AB/SpCo_AB/CUH_AB_879/CUH_AB_879.contigs_split_stranded_95.fa
+</code></pre>
+
+<p>Now, we will need to reverse complement the results of <code>splitC_pegasus</code> because the runs for AA and AB samples are forward-stranded but the orientation of <code>splitC_pegasus</code> contigs corresponds to reversely-stranded runs.</p>
+
+<p>read1:forward strand and read2:reverse  =&gt; FR</p>
+
+<pre><code class="bash">$ cat CUH_AA_489.contigs_split_stranded_95.fa | ./revcomp.pl &gt; CUH_AA_489.contigs_split_stranded_95_revComp.fa
+$ cat CUH_AB_879.contigs_split_stranded_95.fa | ./revcomp.pl &gt; CUH_AB_879.contigs_split_stranded_95_revComp.fa
+</code></pre>
+
+<p>Reverse-complement contigs are here:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CUH/scratch/SplitContigs/AA/SpCo_AA/CUH_AA_489/CUH_AA_489.contigs_split_stranded_95_revComp.fa
+$ /env/cns/proj/projet_CUH/scratch/SplitContigs/AB/SpCo_AB/CUH_AB_879/CUH_AB_879.contigs_split_stranded_95_revComp.fa
+</code></pre>
+
+<p><a name="mapping-mrna-contigs-to-genome"></a></p>
+
+<h2>Mapping mRNA contigs to genome</h2>
+
+<p>mRNA contigs from the 8 transcriptomes (produced with Oases) are aligned on the genome in a 2-step strategy:</p>
+
+<ol>
+<li>BLAT (version 36 with default parameters) quickly localizes corresponding putative regions of mRNA contigs on the genome. The best match for each contig is retained and </li>
+<li>A second alignment is performed using <a href="http://emboss.sourceforge.net/apps/release/6.6/emboss/apps/est2genome.html">Est2Genome</a>(version 5.2 default parameters) to detect exon boundaries. Aligned contigs are retained if more than 80% of the contig is covered with ≥95% identity.</li>
+</ol>
+
+<p>After submitting the following jobs to the scheduler: </p>
+
+<pre><code class="bash">$ jobify -b -J wrapMap_AE -e wrapMap_AE.err -o wrapMap_AE.out --qos=h72 /env/cns/proj/projet_CSU/Annotation/wrapMap_AE.sh
+$ jobify -b -J wrapMap_AF -e wrapMap_AF.err -o wrapMap_AF.out --qos=h72 /env/cns/proj/projet_CSU/Annotation/wrapMap_AF.sh
+$ jobify -b -J wrapMap_AH -e wrapMap_AH.err -o wrapMap_AH.out --qos=h72 /env/cns/proj/projet_CSU/Annotation/wrapMap_AH.sh
+$ jobify -b -J wrapMap_AI -e wrapMap_AI.err -o wrapMap_AI.out --qos=h72 /env/cns/proj/projet_CSU/Annotation/wrapMap_AI.sh
+$ jobify -b -J wrapMap_AJ -e wrapMap_AJ.err -o wrapMap_AJ.out --qos=h72 /env/cns/proj/projet_CSU/Annotation/wrapMap_AJ.sh
+$ jobify -b -J wrapMap_AK -e wrapMap_AK.err -o wrapMap_AK.out --qos=h72 /env/cns/proj/projet_CSU/Annotation/wrapMap_AK.sh
+</code></pre>
+
+<p>we obtain the alignment results such as:</p>
+
+<ul>
+<li>mapping_id95_cov80.gff </li>
+<li>mapping_id95_cov80.ali.sql</li>
+<li>mapping_id95_cov80.modele.sql</li>
+<li>FinalReportMapping </li>
+</ul>
+
+<p>in the following folders:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AE/mapping_est2g_AE/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AF/mapping_est2g_AF/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AH/mapping_est2g_AH/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AI/mapping_est2g_AI/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AJ/mapping_est2g_AJ/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AK/mapping_est2g_AK/
+</code></pre>
+
+<p>In particular now, for AA and AB we launch the following commands:</p>
+
+<pre><code class="bash">$ jobify -b -p normal -c 1 -o out.AA_wrapMap -e err.AA_wrapMap -J AA_wrapMap --qos=h72 &#39;wrapperMapping -BMCMD msub -s CUH_AA_489.contigs_split_stranded_95_revComp.fa  -sm CUH_AA_489.contigs_split_stranded_95_revComp.fa -g genome.unmsk.fa -gm genome.msk.fa -methodID CUHAA -dir mapping_est2g_aftersplit_oriented -type cdna -estStrand 1 -filterBlat &quot;-bm&quot; -finalFilter&#39;
+$ jobify -b -p normal -c 1 -o out.AB_wrapMap -e err.AB_wrapMap -J AB_wrapMap --qos=h72 &#39;wrapperMapping -BMCMD msub -s CUH_AB_879.contigs_split_stranded_95_revComp.fa  -sm CUH_AB_879.contigs_split_stranded_95_revComp.fa -g genome.unmsk.fa -gm genome.msk.fa -methodID CUHAB -dir mapping_est2g_aftersplit_oriented -type cdna -estStrand 1 -filterBlat &quot;-bm&quot; -finalFilter&#39;
+</code></pre>
+
+<p>The resulted files for AA and AB can be, respectively, found here:</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CUH/scratch/WrapperMapping/AA/mapping_est2g_aftersplit_oriented/
+$ /env/cns/proj/projet_CUH/scratch/WrapperMapping/AB/mapping_est2g_aftersplit_oriented/
+</code></pre>
+
+<p><a name="mapping-proteomes-to-genome"></a></p>
+
+<h2>Mapping proteomes to genome</h2>
+
+<p>Several proteomes such as <em>T.castaneum</em>, <em>A.verrucosus</em>, <em>O.taurus</em>, <em>D.ponderosae</em> will be used as evidence for our gene prediction tool (gmove).</p>
+
+<p>We will also take into account some immunity proteins of <em>T.molitor</em> </p>
+
+<p>For that purpose, we align the proteomes on the <em>T.molitor</em> assembly in a 2-step strategy:</p>
+
+<ol>
+<li>We use <a href="https://pubmed.ncbi.nlm.nih.gov/11932250/">BLAT</a> (version 36 with default parameter) to quickly localize corresponding putative regions of the proteins on the genome.
+The best match (BLAT score) and the matches with score ≥90% of the best match score are retained. </li>
+<li>Then, alignments are refined using <a href="https://pubmed.ncbi.nlm.nih.gov/15123596/">Genewise</a> (version 2.2.0 default parameters), which is more accurate for detecting intron/exon boundaries. Alignments are kept if more than 50% of the length of the protein is aligned on the genome.</li>
+</ol>
+
+<p>Initially, we retrieve the proteomes of interest from databases such as NCBI or Uniprot:</p>
+
+<ul>
+<li>For <em>T.molitor</em>, I download a file with 614 proteins <code>https://www.uniprot.org/uniprot/?query=tenebrio&amp;fil=organism%3A%22Tenebrio+molitor+%28Yellow+mealworm+beetle%29+%5B7067%5D%22&amp;sort=score</code> , rename the file and replace pipe characters <code>|</code> with dashes <code>-</code> so that its format is supported by <code>wrapperMapping</code>. The files are in the directory <code>/env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/from_UNIPROT</code></li>
+</ul>
+
+<pre><code class="bash">$ mv uniprot-tenebrio-filtered-organism Tenebrio+molitor+(Yellow+mealworm+beet--.fasta.gz uniprot-tenebrio-filtered-organism_Tenebrio_molitor_Yellow_mealworm_beetle.fasta.gz
+$ sed &#39;s/|/-/g&#39; uniprot-tenebrio-filtered-organism_Tenebrio_molitor_Yellow_mealworm_beetle.fasta &gt; Tenebrio_molitor_Uniprot_sed.fa
+</code></pre>
+
+<ul>
+<li>For <em>T.castaneum</em>, I align 22610 proteins from the <a href="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/002/335/GCF_000002335.3_Tcas5.2/">NCBI_repository</a> update 2019-12-04 17:37  5.9M:</li>
+</ul>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPD/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000002335.3_Tribolium_Castaneum_5.2_protein.faa
+</code></pre>
+
+<ul>
+<li>For <em>O.taurus</em>, I align 21668 proteins from the <a href="https://www.ncbi.nlm.nih.gov/genome/12827">NCBI_repository</a>:</li>
+</ul>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000648695.1_Ontophagus_taurus_2.0_protein.faa
+</code></pre>
+
+<ul>
+<li>For <em>A.verrucosus</em>, I align 15272 proteins from the <a href="https://www.ncbi.nlm.nih.gov/genome/?term=asbolus+verrucosus">NCBI_repository</a>:</li>
+</ul>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCA_004193795.1_Asbolus_Verrucosus_BDFB_1.0_protein.faa
+</code></pre>
+
+<ul>
+<li>For <em>D.ponderosae</em>, I align 20551 proteins from the <a href="https://ftp.ncbi.nlm.nih.gov/genomes/genbank/invertebrate/Dendroctonus_ponderosae/latest_assembly_versions/GCA_000355655.1_DendPond_male_1.0/">NCBI_repository</a> update 2014-08-03 07:07  3.3M:</li>
+</ul>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000355655.1_Dendroctonus_Ponderosae_male_1.0_protein.faa
+</code></pre>
+
+<p>Then, I launch the alignments with the following commands:</p>
+
+<ul>
+<li>For <em>T.molitor</em>:</li>
+</ul>
+
+<pre><code class="bash">$ jobify -b -q normal -c 1 -o out.TeMo -e err.TeMo -J TeMo_Uni &#39;wrapperMapping -BMCMD msub \
+ -g genome.unmsk.fa \
+ -gm genome.msk.fa \
+ -s /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/from_UNIPROT/Tenebrio_molitor_Uniprot_sed.fa \
+ -sm /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/from_UNIPROT/Tenebrio_molitor_Uniprot_sed.fa \
+ -methodID TeMo \
+ -type protein \
+ -argsBlat &quot;-minIdentity=0 -dots=1000 -noHead -extendThroughN&quot; \
+ -filterBlat &quot;-bm -bmthreshold 90&quot; \
+ -extend 1000 \
+ -v \
+ -noZip \
+ -dir Tenebrio_Molitor_with_Mito \
+ -pcov 50 \
+ -nbrSeq 100 \
+ -nbrMatch 50 \
+ -checkpsl \
+ -pslSize 5000&#39;
+</code></pre>
+
+<p>The results are here : <code>/env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Tenebrio_Molitor_with_Mito</code></p>
+
+<p>Number of mapped sequences :    606 (98.6971%)</p>
+
+<ul>
+<li>For <em>T.castaneum</em>:</li>
+</ul>
+
+<pre><code class="bash">$ jobify -b -p normal -c 1 -o out.castaneum_assembly_v1 -e err.castaneum_assembly_v1 -J Castaneum --qos=h72 &#39;wrapperMapping -BMCMD msub \
+ -g genome.unmsk.fa \
+ -gm genome.msk.fa \
+ -s /env/cns/proj/projet_CPD/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000002335.3_Tribolium_Castaneum_5.2_protein.faa \
+ -sm /env/cns/proj/projet_CPD/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000002335.3_Tribolium_Castaneum_5.2_protein.faa \
+ -methodID Tribolium_Castaneum \
+ -type protein \
+ -argsBlat &quot;-minIdentity=0 -dots=1000 -noHead -extendThroughN&quot; \
+ -filterBlat &quot;-bm -bmthreshold 90&quot; \
+ -extend 1000 \
+ -v \
+ -noZip \
+ -dir Tribolium_Castaneum_with_Mito \
+ -pcov 50 \
+ -nbrSeq 5000 \
+ -nbrMatch 50 \
+ -checkpsl \
+ -pslSize 5000&#39;
+</code></pre>
+
+<p>Unfortunately, the step <code>launchMapping</code> of the wrapper ws systematically killed due to time limit (even after launching it again manually). However, the script had completed alignments to the 2 mitochondrial scaffolds <code>Tenebrio_molitor_scaffold_93</code> and <code>Tenebrio_molitor_scaffold_64</code> before being killed. </p>
+
+<p>So, I isolate alignments to mitochondrial scaffolds into the files: <code>mapping_Mito.gff</code>, <code>mapping_Mito.ali.sql</code> and <code>mapping_Mito.modele.sql</code> and combine them with the results of a previous alignment of the <em>T.castaneum</em> proteome to the <em>T.molitor</em> assembly deprived of mitochondrial scaffolds. </p>
+
+<p>The results are here: <code>/env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Tribolium_Castaneum_with_Mito</code></p>
+
+<p>Number of mapped sequences :        21321 (94.30%)</p>
+
+<blockquote>
+<p>Note: as the process was killed, the automatically produced files: <code>mapping.ali.sql</code>, <code>mapping.genewise</code>, <code>mapping.gff</code>, <code>mapping.modele.sql</code> and <code>FinalReportMapping</code> are incomplete. Instead, we can rely on the combined results <code>mapping_concat.gff</code>,<code>mapping_concat.ali.sql</code>,<code>mapping_concat.modele.sql</code>,<code>FinalReportMapping_concat</code> manually generated with the following commands:</p>
+</blockquote>
+
+<pre><code class="bash">$ cd /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Tribolium_Castaneum_with_Mito
+$ cat /env/cns/proj/projet_CPF/RESULTS/FINAL/Mapping_of_Proteomes_of_other_organisms_to_Salsa2_Molitor_Assembly/Salsa2_Molitor_Assembly_Final_version/Tribolium_Castaneum/mapping.gff mapping_Mito.gff &gt; mapping_concat.gff
+$ cat /env/cns/proj/projet_CPF/RESULTS/FINAL/Mapping_of_Proteomes_of_other_organisms_to_Salsa2_Molitor_Assembly/Salsa2_Molitor_Assembly_Final_version/Tribolium_Castaneum/mapping.ali.sql mapping_Mito.ali.sql &gt; mapping_concat.ali.sql
+$ cat /env/cns/proj/projet_CPF/RESULTS/FINAL/Mapping_of_Proteomes_of_other_organisms_to_Salsa2_Molitor_Assembly/Salsa2_Molitor_Assembly_Final_version/Tribolium_Castaneum/mapping.modele.sql mapping_Mito.modele.sql &gt; mapping_concat.modele.sql
+</code></pre>
+
+<ul>
+<li>For <em>O.taurus</em>:</li>
+</ul>
+
+<pre><code class="bash">$ jobify -b -p normal -c 1 -o out.ontota -e err.ontota -J ontotau --qos=h72 &#39;wrapperMapping -BMCMD msub \
+ -g genome.unmsk.fa \
+ -gm genome.msk.fa \
+ -s /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000648695.1_Ontophagus_taurus_2.0_protein.faa \
+ -sm /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000648695.1_Ontophagus_taurus_2.0_protein.faa \
+ -methodID OnTau \
+ -type protein \
+ -argsBlat &quot;-minIdentity=0 -dots=1000 -noHead -extendThroughN&quot; \
+ -filterBlat &quot;-bm -bmthreshold 90&quot; \
+ -extend 1000 \
+ -v \
+ -noZip \
+ -dir Ontophagus_taurus_with_Mito \
+ -pcov 50 \
+ -nbrSeq 5000 \
+ -nbrMatch 50 \
+ -checkpsl \
+ -pslSize 5000&#39;
+</code></pre>
+
+<p>The results are here: <code>/env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Ontophagus_taurus_with_Mito</code></p>
+
+<p>Number of mapped sequences :    17609 (81.2673%)</p>
+
+<ul>
+<li>For <em>A.verrucosus</em>:</li>
+</ul>
+
+<pre><code class="bash">$ jobify -b -p normal -c 1 -o out.asbolus_assembly_v1 -e err.asbolus_assembly_v1 -J Asbolus --qos=h72 &#39;wrapperMapping -BMCMD msub \
+ -g genome.unmsk.fa \
+ -gm genome.msk.fa \
+ -s /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCA_004193795.1_Asbolus_Verrucosus_BDFB_1.0_protein.faa \
+ -sm /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCA_004193795.1_Asbolus_Verrucosus_BDFB_1.0_protein.faa \
+ -methodID Asbolus_Verrucosus \
+ -type protein \
+ -argsBlat &quot;-minIdentity=0 -dots=1000 -noHead -extendThroughN&quot; \
+ -filterBlat &quot;-bm -bmthreshold 90&quot; \
+ -extend 1000 \
+ -v \
+ -noZip \
+ -dir Asbolus_Verrucosus_with_Mito \
+ -pcov 50 \
+ -nbrSeq 5000 \
+ -nbrMatch 50 \
+ -checkpsl \
+ -pslSize 5000&#39;
+</code></pre>
+
+<p>The results are here: <code>/env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Asbolus_Verrucosus_with_Mito</code></p>
+
+<p>Number of mapped sequences :    14074 (92.1556%)</p>
+
+<ul>
+<li>For <em>D.ponderosae</em>:</li>
+</ul>
+
+<pre><code class="bash">$ jobify -b -p normal -c 1 -o out.DePo -e err.DePo -J DePo --qos=h72 &#39;wrapperMapping -BMCMD msub \
+ -g genome.unmsk.fa \
+ -gm genome.msk.fa \
+ -s /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000355655.1_Dendroctonus_Ponderosae_male_1.0_protein.faa \
+ -sm /env/cns/proj/projet_CPD/scratch/Several_Insect_Proteomes/closer_to_molitor_insects/GCF_000355655.1_Dendroctonus_Ponderosae_male_1.0_protein.faa \
+ -methodID DePo \
+ -type protein \
+ -argsBlat &quot;-minIdentity=0 -dots=1000 -noHead -extendThroughN&quot; \
+ -filterBlat &quot;-bm -bmthreshold 90&quot; \
+ -extend 1000 \
+ -v \
+ -noZip \
+ -dir Dendroctonus_with_Mito \
+ -pcov 50 \
+ -nbrSeq 5000 \
+ -nbrMatch 50 \
+ -checkpsl \
+ -pslSize 5000&#39;
+</code></pre>
+
+<p>The results are here: <code>/env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Dendroctonus_with_Mito</code></p>
+
+<p>Number of mapped sequences :    17452 (84.9204%)</p>
+
+<p><a name="gmove"></a></p>
+
+<h2>Gmove</h2>
+
+<p><a href="https://f1000research.com/posters/5-681">gmove</a>, is an easy-to-use predictor with no need of a pre-calibration step. Briefly, putative exons and introns, extracted from alignments (gff files produced during the mapping steps), are used to build a simplified graph. In this graph, nodes and edges represent, respectively, exons and introns. Gmove extracts all paths from the graph and searches open reading frames that are consistent with the protein evidence.</p>
+
+<p>We will provide to <code>gmove</code> as :</p>
+
+<ul>
+<li>mRNA <code>--rna</code> evidence  the 8 gff files from transcriptome alignments to <em>T.molitor</em> assembly.</li>
+<li>proteic <code>--prot</code> evidence the 5 gff files from proteome alignments to <em>T.molitor</em> assembly presented in the section <a href="#mapping-proteomes-to-genome">Mapping proteomes to genome</a>.</li>
+<li>the minimum size of CDS <code>--cds</code> for predicted gene-models will be 100bp (default)</li>
+<li>the maximal size of introns <code>-m</code> will be 150kb (default is 50.000)</li>
+<li>the minimal size of exons <code>-e</code> will be 3 (default is 9 nucleotides)</li>
+<li><code>--score</code> option is activated so that the model with the highest score per connected component is kept</li>
+<li><code>--raw</code> option is activated meaning that we&#39;ll get as output raw predictions as well </li>
+</ul>
+
+<p><a name="remove-single-exon-transcripts-specific-to-1-sample"></a></p>
+
+<h3>remove single-exon transcripts specific to 1 sample</h3>
+
+<p>In order to avoid some &ldquo;noise&rdquo; produced from single-exon transcripts, before launching gmove, we remove from the 8 transcriptome gff files any single-exon transcript that is specific to <strong>only 1</strong> sample.</p>
+
+<blockquote>
+<p>Assume that the following commands are executed in a directory named <code>pipeline1_mito</code></p>
+</blockquote>
+
+<p>Firstly, we change the format of <code>mapping_id95_cov80.gff</code> files from the following directories :</p>
+
+<pre><code class="bash">$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AE/mapping_est2g_AE/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AF/mapping_est2g_AF/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AH/mapping_est2g_AH/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AI/mapping_est2g_AI/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AJ/mapping_est2g_AJ/
+$ /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_mRNA/AK/mapping_est2g_AK/
+$ /env/cns/proj/projet_CUH/scratch/WrapperMapping/AA/mapping_est2g_aftersplit_oriented/
+$ /env/cns/proj/projet_CUH/scratch/WrapperMapping/AB/mapping_est2g_aftersplit_oriented/
+</code></pre>
+
+<p>in this manner:</p>
+
+<pre><code class="bash">cat mapping_id95_cov80.gff | awk &#39;BEGIN{OFS=&quot;\t&quot;; print &quot;##gff-version 3&quot;; print &quot;##Index-subfeatures 1&quot;; } { if($3==&quot;match&quot;){ print $1,$2,$3,$4,$5,$6,$7,$8, &quot;ID=&quot; $10 &quot;;Name=&quot; $10 &quot;;Note=&quot; $13 } else if($3==&quot;HSP&quot;){ print $1,$2,$3,$4,$5,$6,$7,$8, &quot;Parent=&quot; $10; } }&#39; &gt; Sample_Name_mrna.gff3
+</code></pre>
+
+<p>Afterwards, for samples AA, AB I do also:</p>
+
+<pre><code class="bash">$ sed -i &#39;s/CUHAA/CUH_AA/g&#39; AA_mrna.gff3
+$ sed -i &#39;s/CUHAB/CUH_AB/g&#39; AB_mrna.gff3
+</code></pre>
+
+<p>For each sample, I create files containing only single-exon transcripts :</p>
+
+<pre><code class="bash">$ for File in *.gff3;do
+sample=${File%%_*};
+echo ${sample};
+cat ${File} | grep HSP | awk &#39;{ print $9; }&#39; | sed &quot;s/Parent=//&quot; | sort | uniq -c | awk &#39;$1==1 { print $2; }&#39; &gt; ${sample}_single_exon_RNAs;
+done;
+
+$ for sample in AA AB AE AF AH AI AJ AK;
+do
+grep -Fwf ${sample}_single_exon_RNAs ${sample}_mrna.gff3 | grep -v &quot;^#&quot; | awk &#39;$3==&quot;match&quot;&#39; | sort -k1,1 -k4,4n | awk &#39;{split($NF,GENE_INFO,&quot;;&quot;); split(GENE_INFO[1],ID,&quot;=&quot;); print $1,$4,$5,$7,ID[2]}&#39; OFS=&quot;\t&quot; &gt; ${sample}_monoexonic_matches.sorted;
+done;
+</code></pre>
+
+<p>Subsequently, for each sample, I apply the following commands:</p>
+
+<p>I give an example only for sample AA.</p>
+
+<p>For each single-exon transcript of sample AA, we keep the intersections (having a minimum overlap 80% of the transcript&#39;s length) with all the single-exon transcripts of all the other 7 samples.
+For a single-exon transcript with not any intersection, the 6th column is filled with  <code>.</code> :</p>
+
+<pre><code class="bash">$ bedtools intersect -wao -f 0.80 -a AA_monoexonic_matches.sorted -b AB_monoexonic_matches.sorted AE_monoexonic_matches.sorted AF_monoexonic_matches.sorted AH_monoexonic_matches.sorted AI_monoexonic_matches.sorted AJ_monoexonic_matches.sorted AK_monoexonic_matches.sorted -sorted -names AB AE AF AH AI AJ AK &gt; overlap_AA_with_OTHERS_80pc.bed
+</code></pre>
+
+<p>Keep records of single-exons that intersect other samples <code>$6!=&quot;.&quot;</code> and have the same orientation <code>$4==$10</code> (strandedness):</p>
+
+<pre><code class="bash">$ awk &#39;{ if( $6!=&quot;.&quot; &amp;&amp; $4==$10 ) print $0 }&#39; overlap_AA_with_OTHERS_80pc.bed &gt; overlap_AA_with_OTHERS_80pc_strandedness.bed
+
+$ rm overlap_AA_with_OTHERS_80pc.bed
+</code></pre>
+
+<p>At this point, I insert some code <code>R</code> to create the intersections-table for each sample. </p>
+
+<p>I give an example only for sample AA.</p>
+
+<pre><code class="R">&gt; source(&quot;single_exon_transcripts_intersections.R&quot;)
+&gt; table_creation(&quot;AA_monoexonic_matches.sorted&quot;, &quot;overlap_AA_with_OTHERS_80pc_strandedness.bed&quot;, &quot;AA_monoexonic_overlaps_80pc.tab&quot;)
+</code></pre>
+
+<p>With this part of code, a table like the following one is produced:</p>
+
+<p>Interpretation of the first line:
+The last 8 columns say whether single-exon transcript CUH_AAT00030600001 intersects any of the samples AA, AB, AE, AF, AH, AI, AJ, AK</p>
+
+<blockquote>
+<p>Keep in mind: For the intersection, I set <code>FALSE</code> by default to all samples but of course all values under the 5th column (corresponding to sample AA) are <code>TRUE</code>, as naturally sample AA intersects sample AA</p>
+</blockquote>
+
+<pre><code class="bash">Tenebrio_molitor_scaffold_1     75739   77345   CUH_AAT00030600001      FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   
+Tenebrio_molitor_scaffold_1     152995  153331  CUH_AAT00027452001      FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   
+Tenebrio_molitor_scaffold_1     196292  196491  CUH_AAT00013387001      FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   
+Tenebrio_molitor_scaffold_1     201565  202282  CUH_AAT00004081001      FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   
+Tenebrio_molitor_scaffold_1     223900  224096  CUH_AAT00013845001      FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   FALSE   
+Tenebrio_molitor_scaffold_1     684118  685550  CUH_AAT00005204001      FALSE   TRUE    FALSE   FALSE   FALSE   TRUE    TRUE    TRUE    
+Tenebrio_molitor_scaffold_1     685611  685837  CUH_AAT00013594001      FALSE   TRUE    FALSE   FALSE   FALSE   TRUE    TRUE    TRUE    
+Tenebrio_molitor_scaffold_1     685820  686059  CUH_AAT00013593001      FALSE   TRUE    FALSE   FALSE   FALSE   TRUE    FALSE   FALSE
+</code></pre>
+
+<p>We extract single-exon transcripts specific to sample AA with the following command:</p>
+
+<pre><code class="bash">$ awk &#39;{if ($NF==0) {print $4}}&#39; AA_monoexonic_overlaps_80pc.tab &gt; AA_mono-exonic_specific_to_sample.tab
+</code></pre>
+
+<p>Finally, I create gff files deprived <code>-v</code> of single-exon transcripts specific to a particular sample:</p>
+
+<pre><code class="bash">$ for sample in AA AB AE AF AH AI AJ AK;
+do
+fgrep -v -f &lt;(cut -f4 ${sample}_mono-exonic_specific_to_sample.tab) ${sample}_mrna.gff3 &gt; ${sample}_mrna_monoAtLeast_2x.gff3
+awk &#39;$3~&quot;match&quot;&#39; ${sample}_mrna_monoAtLeast_2x.gff3 | wc -l
+done;
+</code></pre>
+
+<p>All the results are here: <code>/env/cns/proj/projet_CUH/scratch/gmove/pipeline1_mito</code></p>
+
+<p><a name="split-gmove-input-files"></a></p>
+
+<h3>split gmove input files</h3>
+
+<blockquote>
+<p>Assume that the following commands are executed in a directory named <code>pipeline2_mito</code></p>
+</blockquote>
+
+<p>Some files that we will need:</p>
+
+<pre><code class="bash">$ ln -s /pathTo/pipeline1_mito/*_mrna_monoAtLeast_2x.gff3 .
+
+### concatenate mRNA transcripts ###
+$ cat *_mrna_monoAtLeast_2x.gff3 &gt; All_mRNA_monoAtLeast_2x.gff3
+
+### concatenate proteic matches from 5 insects ###
+$ cat /pathTo/Asbolus_Verrucosus_with_Mito/mapping.gff /pathTo/Dendroctonus_with_Mito/mapping.gff /pathTo/Ontophagus_taurus_with_Mito/mapping.gff /pathTo/Tenebrio_Molitor_with_Mito/mapping.gff /env/cns/proj/projet_CPF/RESULTS/FINAL/Mapping_of_Proteomes_of_other_organisms_to_Salsa2_Molitor_Assembly/Salsa2_Molitor_Assembly_Final_version/Tribolium_Castaneum/mapping.gff /pathTo/Tribolium_Castaneum_with_Mito/mapping_Mito.gff &gt; Asbolus_Tribolium_Dendroctonus_Taurus_and_Tenebrio.gff
+
+### scaffolds lengths ###
+$ sort -k1,1 -k2,2n /env/cns/proj/projet_CPD/RESULTS/FINAL/Hi-C_with_SALSA2/parallel/SCAFFOLDS/Tenebrio_molitor_v1_nice_order.lengths &gt; Tenebrio_molitor_v1_with_mito.sorted.len
+
+$ sed -i &#39;s/Asbolus_Verrucosus/AsVe/g&#39; Asbolus_Tribolium_Dendroctonus_Taurus_and_Tenebrio.gff
+$ sed -i &#39;s/Tribolium_Castaneum/TriCa/g&#39; Asbolus_Tribolium_Dendroctonus_Taurus_and_Tenebrio.gff
+</code></pre>
+
+<p>Split gmove input files:</p>
+
+<pre><code class="bash">$ mkdir Gmove_Intron_150kb
+$ cd Gmove_Intron_150kb
+$ mkdir input
+
+### concatenate mRNA and prot alignments ###
+$ cat ../Asbolus_Tribolium_Dendroctonus_Taurus_and_Tenebrio.gff ../All_mRNA_monoAtLeast_2x.gff3 | grep -v &quot;^#&quot; | awk &#39;{ OFS=&quot;\t&quot;; print $1, $4, $5; }&#39; | sort -k1,1 -k2,2n &gt; input/all.bed
+
+### list of uncovered regions ###
+$ bedtools complement -i input/all.bed -g ../Tenebrio_molitor_v1_with_mito.sorted.len &gt; input/uncovered.bed
+
+### create chunk of 6Mb delimited by uncovered regions ###
+$ cat input/uncovered.bed | awk &#39;BEGIN { while(getline &lt; &quot;../Tenebrio_molitor_v1_with_mito.sorted.len&quot; &gt; 0) { if($2&gt;=6000000) { vu[$1]=1; }}} vu[$1]==1&#39; | awk &#39;BEGIN { part=0; b=0; e=0; name=&quot;&quot;; } { if($1!=name) { if(name!=&quot;&quot;) { OFS=&quot;\t&quot;; print name, part, b, e; } part++; name=$1; b=$2; e=$3; } else { if($3-b&gt;4000000) { r=$2+int(($3-$2)/2); OFS=&quot;\t&quot;; print name, part, b, r; b=r+1; e=$3; part++; } else { e=$3; }}} END { if(name!=&quot;&quot;) { OFS=&quot;\t&quot;; print name, part, b, e; }}&#39; &gt; input/chunk_large_seq
+
+### create chunk for small sequences ###
+$ cat ../Tenebrio_molitor_v1_with_mito.sorted.len | awk &#39;$2&lt;6000000&#39; | awk &#39;BEGIN { cpt=0; part=1; } { if(cpt&gt;6000000) { part++; cpt=0; } cpt+=$2; OFS=&quot;\t&quot;; print $1, part, 1, $2; }&#39; &gt; input/chunk_small_seq
+
+### extract gff foreach chunk, using pegasus ###
+$ nbpart=`cat input/chunk_small_seq | sort -k2,2n | tail -1 | awk &#39;{ print $2; }&#39;`
+
+$ cat input/chunk_large_seq | awk -v NB=$nbpart &#39;{ OFS=&quot;\t&quot;; print $1, $2+NB, $3, $4; }&#39; &gt; input/chunk_large_seq.num
+
+$ mkdir input/chunk
+
+$ cat input/chunk_small_seq input/chunk_large_seq.num | awk &#39;{ file=&quot;input/chunk/chunk&quot;$2; OFS=&quot;\t&quot;; print $1, $3, $4 &gt; file; }&#39;
+
+### the script &quot;split_gff.sh&quot; must be in the &quot;pipeline2_mito&quot; directory and adequately edited before being launched ###
+$ ccc_msub split_gff.sh
+</code></pre>
+
+<p><a name="launch-gmove"></a></p>
+
+<h3>launch gmove</h3>
+
+<p>Submit the script <code>gmovePegasus.sh</code> (it must be in the directory <code>pipeline2_mito/Gmove_Intron_150kb</code>):</p>
+
+<pre><code class="bash">$ ccc_msub gmovePegasus.sh
+</code></pre>
+
+<p><a name="merge-gmove-output"></a></p>
+
+<h3>merge gmove output</h3>
+
+<pre><code class="bash">$ cd /pathTo/pipeline2_mito/Gmove_Intron_150kb
+
+$ for i in {1..76}; do cat gmove/gmove_$i/filter/gmove*; done | awk &#39;BEGIN { seq=&quot;&quot;; cpt=0; } { if($1!=seq) { cpt=0; } seq=$1; if($3==&quot;mRNA&quot;) { cpt++; id=&quot;mRNA.&quot;seq&quot;.&quot;cpt&quot;.1&quot;; split($9,t, &quot;;&quot;); t[1]=&quot;ID=&quot;id; t[2]=&quot;Name=&quot;id; $9=t[1]&quot;;&quot;t[2]&quot;;&quot;t[3]&quot;;&quot;t[4]&quot;;&quot;t[5]&quot;;&quot;t[6]&quot;;&quot;t[7]; } else { id=&quot;mRNA.&quot;seq&quot;.&quot;cpt&quot;.1&quot;; $9=&quot;Parent=&quot;id; } OFS=&quot;\t&quot;; print $0; }&#39; &gt; gmove/gmove_filter.gff
+</code></pre>
+
+<p><a name="statistics-of-gmove-gene-model-predictions"></a></p>
+
+<h3>statistics of gmove gene model predictions</h3>
+
+<pre><code class="bash">$ cd /pathTo/pipeline2_mito/Gmove_Intron_150kb
+$ annot_report -gff gmove_filter.gff -o gmove_filter.stats -cl ../../Tenebrio_molitor_v1_with_mito.sorted.len
+
+
+$ cat gmove_filter.stats 
+Nombre de genes                                   24870
+Nombre de genes sans intron                       6717 (27%)
+Taille des genes en nt. (moy. : med.)             7518.43 : 1576
+Taille des genes sans UTR (moy. : med.)           5309.68 : 901
+Nombre d&#39;exons / gene (moy. : med.)               3.78 : 2
+Nombre d&#39;exons / gene pluri (moy. : med.)         4.81 : 3
+Taille des CDS en nt. (moy. : med.)               1041.10 : 606
+Taille des CDS gene pluri en nt. (moy. : med.)    1253.09 : 972
+Couverture en bases codante                       25892103 (9.0%)
+Nombre d&#39;introns                                  69147
+Taille des introns en nt. (moy. : med.)           1535.28 : 55
+% contigs avec un gene min. (% en bases)          91.0% (99.6%)
+</code></pre>
+
+<p><a name="get-the-proteins-and-virtual-mrna"></a></p>
+
+<h3>get the proteins and virtual mRNA</h3>
+
+<pre><code class="bash">$ cp Tenebrio_molitor_v1_WITH_MITO.fasta /pathTo/pipeline2_mito/Gmove_Intron_150kb/
+$ cd /pathTo/pipeline2_mito/Gmove_Intron_150kb
+$ jobify -b --chrono -q small -e e.pep -o o.pep -J pep &quot;gff2fasta -i gmove_filter.gff -b Tenebrio_molitor_v1_WITH_MITO.fasta -o gmove_filter.pep.fa -ass -prot 1 -type CDS&quot;
+</code></pre>
+
+<p>The results are here : <code>/env/cns/proj/projet_CUH/scratch/gmove/again_with_prot_cov50/pipeline2_mito/Gmove_Intron_150kb/gmove</code></p>
+
+<p><a name="post-gmove-filtering"></a></p>
+
+<h2>post-gmove filtering</h2>
+
+<p>Gene predictions are particularly rich in single-exon genes (27%), pushing us to investigate more on them.
+The idea is to assess whether or not several criteria are met in order to &ldquo;ignore&rdquo; a part of single-exons genes. 
+For instance, we focus on :</p>
+
+<ol>
+<li>the presence of domains pfam or blastp hits in single-exon genes</li>
+<li>the fraction of a repeated region overlapping a single-exon gene. Genes highly covered by repeats (&gt;90%) are classified as transposable elements and therefore filtered.</li>
+<li>the ratio UTR/(UTR+CDS). If a single-exon gene is predicted by RNA-Seq only and composed of &gt;80% untranslated regions, then we exclude it.</li>
+</ol>
+
+<p>We remove also single-exon genes that have not any blastp /pfam hit and accomplish none of the following conditions:</p>
+
+<ol>
+<li>predicted by at least 1 mRNA transcript and 1 protein.</li>
+<li>predicted by at least 2 mRNA samples</li>
+<li>predicted by a Tenebrio Molitor protein (~600 Uniprot proteins)</li>
+</ol>
+
+<p><a name="utr-trimming"></a></p>
+
+<h3>UTR trimming</h3>
+
+<p>First of all, we start with a &ldquo;UTR cleaning&rdquo; for all genes. This means a trimming of untranslated regions overlapping coding sequences of other gene models.</p>
+
+<pre><code class="bash">$ gff=/pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove/gmove_filter.gff 
+$ cd /pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove
+
+### trim overlapping UTRs ###
+$ jobify -b --chrono -q small -e e.trim_utr -o o.trim_utr &quot;trim_utr_overlapping_coding -i $gff -o gmove_filter.utr_trimmed.gff&quot;
+
+### Compute the real size of UTRs (modified after utr_trimming) ###
+$ cat gmove_filter.utr_trimmed.gff  | grep UTR | awk &#39;{ print $NF, $5-$4+1; }&#39; | sed &quot;s/Parent=//&quot; | awk &#39;{ sum[$1]+=$2; } END { for(i in sum) { print i, sum[i]; }}&#39; &gt; utr_length_per_model_after_utr_trimmed 
+</code></pre>
+
+<p><a name="rnaseq-only-predictions"></a></p>
+
+<h3>RNAseq-only predictions</h3>
+
+<p>Secondly, we search for genes predicted only by mRNA evidence.</p>
+
+<pre><code class="bash">### List of mRNA transcripts without any proteic evidence ###
+$ proteins=/pathTo/pipeline2_mito/Asbolus_Tribolium_Dendroctonus_Taurus_and_Tenebrio.gff
+$ rna=/pathTo/pipeline2_mito/All_mRNA_monoAtLeast_2x.gff3
+
+$ cat $proteins | grep transcript | sort -k1,1 -k4,4n &gt; prot_matches.sorted
+$ cat $rna | grep match | sort -k1,1 -k4,4n &gt; rna_matches.sorted
+
+$ bedtools subtract -A -a rna_matches.sorted -b prot_matches.sorted -wa | sort -u &gt; rna_only
+
+### &quot;rna&quot; transcripts which are not &quot;rna_only&quot; transcripts ###
+$ awk -F &#39;\t&#39; &#39;{OFS=&quot;\t&quot;;{split($NF,GENE_INFO,&quot;;&quot;); split(GENE_INFO[1],ID,&quot;=&quot;); {print $1, $2, $3, $4, $5, $6, $7, $8, ID[2]}}}&#39; rna_only &gt; rna_only_with_IDs
+$ awk -F &#39;\t&#39; &#39;{OFS=&quot;\t&quot;;{split($NF,GENE_INFO,&quot;;&quot;); split(GENE_INFO[1],ID,&quot;=&quot;); {print $1, $2, $3, $4, $5, $6, $7, $8, ID[2]}}}&#39; rna_matches.sorted &gt; rna_matches_sorted_with_IDs
+$ fgrep -v -f &lt;(cut -f9 rna_only_with_IDs) rna_matches_sorted_with_IDs &gt; rna_matches_sorted_with_IDs_WO_rna_only
+
+### keep &quot;rna_only&quot; transcripts that do not overlap other longer &quot;rna&quot; transcripts ### 
+bedtools option : -F    Minimum overlap required as a fraction of B
+$ bedtools intersect -wo -F 1 -a rna_matches_sorted_with_IDs_WO_rna_only -b rna_only_with_IDs &gt; intersect_rna_only_with_rna
+$ fgrep -v -f &lt;(cut -f18 intersect_rna_only_with_rna | sort | uniq) rna_only_with_IDs &gt; clearly_rna_only_with_IDs
+</code></pre>
+
+<p><a name="gmove-mrnas-with-utrutrcds--80"></a></p>
+
+<h3>gmove mRNAs with UTR/(UTR+CDS) &gt; 80%</h3>
+
+<pre><code class="bash">$ cat gmove_filter.utr_trimmed.gff | awk &#39;$3==&quot;mRNA&quot;&#39; | sed &quot;s=;= =g&quot; | sed &quot;s/=/ /g&quot; | awk &#39;BEGIN {while(getline &lt; &quot;utr_length_per_model_after_utr_trimmed&quot; &gt; 0) { utr[$1]=$2; }} { if(utr[$10]==&quot;&quot;) { utr[$10]=0; } if(utr[$10]/($18+utr[$10])&gt;0.80) { OFS=&quot;\t&quot;; print $1, $2, $3, $4, $5, $6, $7, $8, $9&quot;=&quot;$10; }}&#39; &gt; ratio_utr_cds_sup80percent
+</code></pre>
+
+<p><a name="single-exon-genes"></a></p>
+
+<h3>single-exon genes</h3>
+
+<pre><code class="bash">$ cat gmove_filter.utr_trimmed.gff | grep CDS | awk &#39;{ print $9; }&#39; | sed &quot;s/Parent=//&quot; | sort | uniq -c | awk &#39;$1==1 { print $2; }&#39;  &gt; single_exon_genes
+$ grep -Fwf single_exon_genes gmove_filter.utr_trimmed.gff &gt; single-exon_genes.gff
+$ awk &#39;{if ($3 ~ &quot;mRNA&quot;) {print $NF, $5-$4+1;}}&#39; OFS=&quot;\t&quot; single-exon_genes.gff | sed &#39;s/.*ID=//&#39; | awk -F &quot;\t&quot; &#39;sub(&quot;;Name.*$&quot;,&quot;&quot;,$1)&#39; OFS=&quot;\t&quot; &gt; single-exon_genes_lengths.tab
+</code></pre>
+
+<p>Calculate single-exon genes with UTR/(UTR+CDS) &gt; 80% and no proteic evidence</p>
+
+<pre><code class="bash">$ bedtools intersect -b clearly_rna_only_with_IDs -a ratio_utr_cds_sup80percent -wa | awk &#39;{print $NF; }&#39; | sort -u | sed &quot;s/ID=//&quot; &gt; only_rna_withUTRCDS_higher80p
+$ cat only_rna_withUTRCDS_higher80p | set_inter single_exon_genes &gt; only_rna_withUTRCDS_higher80p_and_singlexon
+</code></pre>
+
+<blockquote>
+<p>Assume that the following commands are executed in a directory named <code>pipeline3_mito</code></p>
+</blockquote>
+
+<p><a name="blastp-diamond"></a></p>
+
+<h3>blastp diamond</h3>
+
+<pre><code class="bash">$ mkdir Gmove_Intron_150kb
+$ cd Gmove_Intron_150kb
+$ ln -s /pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove/gmove_filter.pep.fa .
+
+### map virtual Tenebrio proteins to nr database ### 
+$ jobify -b -q xlarge -c 36 -J ncgmo -o blastp.out -e blastp.err /env/cns/src/diamond/v0.9.24/diamond blastp --query gmove_filter.pep.fa --db /env/cns/proj/projet_CUH/scratch/diamond/nr/nr_05_05_2020 --outfmt 6 qseqid sseqid length mismatch gapopen qstart qend qlen sstart send slen score bitscore evalue pident salltitles --evalue 10e-5 --unal 0 --out blastp.tbl --threads 36
+
+### get virtual Tenebrio proteins having blastp hits ### 
+$ awk &#39;{ gsub(/Parent=/,&quot;&quot;,$1); print $0; }&#39; OFS=&quot;\t&quot; blastp.tbl | cut -f1 | sort | uniq &gt; blastp_ONLY_gene_name.tbl
+</code></pre>
+
+<blockquote>
+<p>explain some columns of the output table: blastp.tbl</p>
+</blockquote>
+
+<table><thead>
+<tr>
+<th>column</th>
+<th>interpretation</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>length</td>
+<td>alignment length (sequence overlap)</td>
+</tr>
+<tr>
+<td>qstart</td>
+<td>start of alignment in query</td>
+</tr>
+<tr>
+<td>qlen</td>
+<td>query sequence length</td>
+</tr>
+<tr>
+<td>pident</td>
+<td>percentage of identical matches</td>
+</tr>
+<tr>
+<td>salltitles</td>
+<td>All Subject Title(s), separated by a &#39;&lt;&gt;&#39;</td>
+</tr>
+</tbody></table>
+
+<p>Resulted tables, such as <code>blastp.tbl</code> and <code>blastp_ONLY_gene_name.tbl</code> can be found here: <code>/env/cns/proj/projet_CUH/scratch/gmove/again_with_prot_cov50/pipeline3_mito/</code></p>
+
+<p><a name="pfam-domains"></a></p>
+
+<h3>pfam domains</h3>
+
+<p>A molule needs to be loaded, before we start</p>
+
+<pre><code class="bash">$ module load hmmer/3.2.1
+</code></pre>
+
+<p>Looking for domains pfam in the gene set</p>
+
+<pre><code class="bash">$ jobify -b -q xlarge -c 24 -o o.hmm_tbl -e e.hmm_tbl -J hmm_tbl &quot;hmmsearch --cpu 24 --tblout hmmsearch_gff.tbl /env/cns/proj/projet_CUH/scratch/gmove/Pfam-A.hmm.gz gmove_filter.pep.fa&quot;
+
+### genes with domains and unique counts ###
+$ grep -v &quot;^#&quot; hmmsearch_gff.tbl | cut -d&quot; &quot; -f1 | sed &#39;s/Parent=//g&#39; | sort | uniq -c | awk &#39;{ print $2, $1 }&#39; OFS=&quot;\t&quot; &gt; genes_with_domains.tab
+
+### genes with domains and expected value &lt; 10e-5 and unique counts ###
+$ grep -v &quot;^#&quot; hmmsearch_gff.tbl | awk &#39;$5 &lt; 10e-5 {print $0}&#39; | cut -d&quot; &quot; -f1 | sed &#39;s/Parent=//g&#39; | sort | uniq -c | awk &#39;{ print $2, $1 }&#39; OFS=&quot;\t&quot; &gt; genes_with_domains_10e-5.tab
+
+### names of genes with domains and expected value &lt; 10e-5 ###
+$ cut -f1 genes_with_domains_10e-5.tab | sort &gt; gene_names_with_Pfam_domains_10e-5.tab
+</code></pre>
+
+<p>Combine pfam and blastp results</p>
+
+<pre><code class="bash">### genes having pfam and blastp hit ###
+$ comm -12 gene_names_with_Pfam_domains_10e-5.tab blastp_ONLY_gene_name.tbl &gt; intersection_pfam_10e-5_blastp_hits.tab
+
+### genes having only pfam hit ###
+$ fgrep -v -f intersection_pfam_10e-5_blastp_hits.tab gene_names_with_Pfam_domains_10e-5.tab &gt; only_Pfam_hits_10e-5.tab
+
+### genes having only blastp hit ###
+$ fgrep -v -f intersection_pfam_10e-5_blastp_hits.tab blastp_ONLY_gene_name.tbl &gt; only_blastp_hit.tab
+
+### union of genes having blastp or pfam hit ###
+$ cat blastp_ONLY_gene_name.tbl gene_names_with_Pfam_domains_10e-5.tab | sort | uniq &gt; union_pfam_10e-5_blastp_hits.tab
+</code></pre>
+
+<p><a name="repeatmodeler"></a></p>
+
+<h3>RepeatModeler</h3>
+
+<p>According to the results of RepeatScout (section <code>Masking genome</code>) there is high presence of repeats in the <em>T.molitor</em> assembly (46.36 %)</p>
+
+<p>This time, we will use RepeatModeler for the &ldquo;repeats&rdquo; detection and we will mask the genome based on the results.</p>
+
+<pre><code class="bash">$ mkdir RepeatModeler_V1
+$ cd RepeatModeler_V1
+
+### create database ###
+$ jobify -q small -b /env/cns/src/RepeatModeler/RepeatModeler-2.0.1/BuildDatabase -name Tenebrio_molitor_with_Mito Tenebrio_molitor_v1_WITH_MITO.fasta
+
+### Library with Repeatmodeler ###
+$ jobify -b --chrono -q xlarge -c 36 -- /env/cns/src/RepeatModeler/RepeatModeler-2.0.1/RepeatModeler -database Tenebrio_molitor_with_Mito -pa 9 -LTRStruct
+
+$ chmod +x Tenebrio_molitor_v1_WITH_MITO.fasta
+</code></pre>
+
+<p>Mask the genome based on the library generated with RepeatModeler</p>
+
+<pre><code class="bash">$ module load repeatmasker/4.1.0
+
+$ jobify -b --chrono -q xlarge -c 40 -- RepeatMasker -pa 40 -gff -lib Tenebrio_molitor_with_Mito-families.fa Tenebrio_molitor_v1_WITH_MITO.fasta
+</code></pre>
+
+<blockquote>
+<p>RepeatModeler results are here: /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/RepeatModeler_with_Mito</p>
+</blockquote>
+
+<p>bases masked:  134678880 bp ( 46.77 %)</p>
+
+<p>Assume that the following commands are executed in a directory named <code>pipeline4_mito</code></p>
+
+<p>Repeats overlapping predicted genes (exons)</p>
+
+<pre><code class="bash">### create &quot;repeats&quot; position table ###
+$ cat Tenebrio_molitor_v1_WITH_MITO.fasta.out.gff  | awk &#39;BEGIN{ OFS=&quot;\t&quot;; } $0 !~ /^\#/ { gsub(/\&quot;/,&quot;&quot;,$10); print $1, $4, $5, $10 }&#39; &gt; repeat_pos.tab
+
+### merge repeats overlapping each other ###
+$ sort -k1,1 -k2,2n repeat_pos.tab &gt; repeat_pos.sort.tab
+$ bedtools merge -i repeat_pos.sort.tab &gt; repeat_pos.sort.merge.tab
+
+### genes exons ###
+$ cat /pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove/gmove_filter.gff | awk &#39;BEGIN{ OFS=&quot;\t&quot;; } { if($3==&quot;UTR&quot; || $3==&quot;CDS&quot;){ gsub(/Parent=/,&quot;&quot;,$9); print $1, $4, $5, $9; } }&#39; &gt; exons.tab
+
+### repeats overlapping genes ###
+$ bedtools intersect -wo -a exons.tab -b /pathTo/RepeatModeler_V1/repeat_pos.sort.merge.tab &gt; exons_repeat_ovlp
+
+### nombre de bases exoniques chevauchées par un repeat ###
+$ cat exons_repeat_ovlp | awk &#39;{ cov[$4]+=$8 } END{ for(i in cov){ print i, cov[i] } }&#39; &gt; exons_repeat_ovlp.cov
+
+### calcul de couverture de chaque gene = nombre de bases exoniques chevauchées par un repeat / nombre de bases exoniques ###
+$ cat exons.tab | awk &#39;BEGIN{ while(getline &lt; &quot;exons_repeat_ovlp.cov&quot; &gt; 0){ cov[$1]=$2 } } { lg[$4]+=$3-$2+1 } END{ for(i in lg){ if(cov[i]==&quot;&quot;){ cov[i]=0 } print i, lg[i], cov[i], cov[i]/lg[i]; } }&#39; &gt; gene_repeat_cov
+
+### genes highly covered by repeats (&gt;90%) without pfam/blastp hit ### 
+$ cat gene_repeat_cov | awk &#39;BEGIN{ while(getline &lt; &quot;/pathTo/pipeline3_mito/union_pfam_10e-5_blastp_hits.tab&quot; &gt;0){ id[$1]=1; } } $4&gt;=0.9 &amp;&amp; id[$1]!=1&#39; &gt; gene_highly_repeat_wo_hit_nr_or_pfam
+</code></pre>
+
+<p>The last 6 generated tables <code>repeat_pos.sort.merge.tab</code>, <code>exons.tab</code>, <code>exons_repeat_ovlp</code>, <code>exons_repeat_ovlp.cov</code>, <code>gene_repeat_cov</code>, <code>gene_highly_repeat_wo_hit_nr_or_pfam</code> are here : <code>/env/cns/proj/projet_CSU/Annotation/post_gmove_files</code></p>
+
+<p><a name="transposonpsi"></a></p>
+
+<h3>TransposonPSI</h3>
+
+<p>Detection of transposons with TransposonPSI in the geneset.</p>
+
+<pre><code class="bash">$ cd /pathTo/pipeline4_mito
+$ mkdir batch_out
+$ cp /env/cns/proj/projet_CSU/Annotation/scripts/te_psi.sh batch_out/
+$ ln -s /pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove/gmove_filter.pep.fa .
+
+### split proteins file ###
+$ splitFasta -fna gmove_filter.pep.fa -cutfna &quot;nbseq:1000&quot; -dir prot_batch
+
+$ cd batch_out
+$ for f in ../prot_batch/gmove_filter.pep.fa_part* ; do suf=${f##*_}; mkdir $suf; cp $f ${suf}/; done
+
+### prepare commands pegasus for TransposonPSI to be launched on the split protein packets ###
+$ for f in part*/gmove_filter.pep.fa_* ; do dir=$(dirname $f); file=$(basename $f); echo &quot;cd $dir; /env/cns/src/TransposonPSI/TransposonPSI_08222010/transposonPSI.pl $file prot; cd ..&quot; ; done | awk &#39;{ print &quot;TASK&quot;, &quot;TEPSI_&quot;NR, &quot;-c 1&quot;, &quot;bash -c&quot;, &quot;\&quot;&quot;$0&quot;\&quot;&quot; }&#39; &gt; te_psi.cmd
+
+### launch te_psi.sh ###
+$ ccc_msub ./te_psi.sh
+
+#### cleaning ###
+$ rm -r /pathTo/pipeline4_mito/prot_batch
+
+### concatenate all results ###
+$ cat batch_out/part*/gmove_filter.pep.fa_part*.TPSI.allHits &gt; Tenebrio_Molitor_V1.annot.pep.fa.TPSI.allHits
+$ cat batch_out/part*/gmove_filter.pep.fa_part*.TPSI.topHits &gt; Tenebrio_Molitor_V1.annot.pep.fa.TPSI.topHits
+
+### genes tagged as TEs ###
+$ cat Tenebrio_Molitor_V1.annot.pep.fa.TPSI.topHits | awk &#39;BEGIN{ OFS=&quot;\t&quot;; } $1 !~ /\/\// { print $5, $1, $NF; }&#39; | sed &#39;s/Parent=//&#39; &gt; gene_te
+</code></pre>
+
+<p>Combine TransposonPSI genes and genes <strong>highly</strong> covered by repeats (with RepeatModeler) without any pfam or blastp hit. </p>
+
+<pre><code class="bash">$ cat gene_te gene_highly_repeat_wo_hit_nr_or_pfam | awk &#39;{ print $1 }&#39; | sort -u &gt; gene_tagged_te
+</code></pre>
+
+<p>Results, such as <code>Tenebrio_Molitor_V1.annot.pep.fa.TPSI.allHits</code>, <code>Tenebrio_Molitor_V1.annot.pep.fa.TPSI.topHits</code>, <code>gene_te</code>, <code>gene_tagged_te</code> are here : <code>/env/cns/proj/projet_CSU/Annotation/post_gmove_files/</code></p>
+
+<p><a name="intersect-single-exon-genes-with-cdss-of-mrna-and-protein-transcripts"></a></p>
+
+<h3>intersect single-exon genes with CDSs of mRNA and protein transcripts</h3>
+
+<pre><code class="bash">$ cd /pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove
+$ mkdir intersect_single_exon_genes_with_prot_and_rna_CDS
+$ cd intersect_single_exon_genes_with_prot_and_rna_CDS/
+
+### single-exon genes ###
+$ ln -s single-exon_genes.gff .
+$ grep -v &quot;^#&quot; single-exon_genes.gff | awk &#39;$3==&quot;CDS&quot;&#39;  | sort -k1,1 -k4,4n | awk &#39;{split($NF,GENE_INFO,&quot;;&quot;); split(GENE_INFO[1],ID,&quot;=&quot;); print $1,$4,$5,$7,ID[2]}&#39; OFS=&quot;\t&quot; &gt; single-exons_genes_matches.sorted;
+
+### mRNAs ###
+$ ln -s /pathTo/pipeline1_mito/*monoAtLeast_2x.gff3 .
+
+### proteins from 5 insects ###
+$ ln -s /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Asbolus_Verrucosus_with_Mito/mapping_cov50.gff AsVe.gff
+$ ln -s /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Dendroctonus_with_Mito/mapping_cov50.gff DePo.gff
+$ ln -s /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Ontophagus_taurus_with_Mito/mapping_cov50.gff OnTau.gff
+$ ln -s /env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Tenebrio_Molitor_with_Mito/mapping_cov50.gff TeMo.gff
+$ ln -s/env/cns/proj/projet_CPF/scratch/RESULTS/FINAL/align_prot/Tribolium_Castaneum_with_Mito/NEW_FILES/mapping_cov50.gff TriCa.gff
+
+### convert protein gff files to format gff3 ###
+$ cat TeMo.gff | gawk &#39;BEGIN{OFS=&quot;\t&quot;; print &quot;##gff-version 3&quot;; print &quot;##Index-subfeatures 1&quot;; } { if($3==&quot;transcript&quot;){ alias=$13; gsub(/\&quot;/,&quot;&quot;,alias); note=&quot;&quot;; for(i=16;i&lt;=NF;i++){ note=note &quot; &quot; $(i); } gsub(/&quot;/,&quot;&quot;,note); gsub(/;/,&quot;\\\;&quot;,note); gsub(/=/,&quot;\\\=&quot;,note); gsub(/%/,&quot;\\\%&quot;,note); gsub(/&amp;/,&quot;\\\&amp;&quot;,note); gsub(/,/,&quot;\\\,&quot;,note); print $1,$2,$3,$4,$5,$6,$7,$8, &quot;ID=&quot; $10 &quot;;Name=&quot; $10 &quot;;Alias=&quot; alias &quot;;Note=&quot; note; } else if($3==&quot;exon&quot;){ print $1,$2,$3,$4,$5,$6,$7,$8, &quot;Parent=&quot; $10 } }&#39; &gt; TeMo_protein.gff3
+$ cat TriCa.gff | gawk &#39;BEGIN{OFS=&quot;\t&quot;; print &quot;##gff-version 3&quot;; print &quot;##Index-subfeatures 1&quot;; } { if($3==&quot;transcript&quot;){ alias=$13; gsub(/\&quot;/,&quot;&quot;,alias); note=&quot;&quot;; for(i=16;i&lt;=NF;i++){ note=note &quot; &quot; $(i); } gsub(/&quot;/,&quot;&quot;,note); gsub(/;/,&quot;\\\;&quot;,note); gsub(/=/,&quot;\\\=&quot;,note); gsub(/%/,&quot;\\\%&quot;,note); gsub(/&amp;/,&quot;\\\&amp;&quot;,note); gsub(/,/,&quot;\\\,&quot;,note); print $1,$2,$3,$4,$5,$6,$7,$8, &quot;ID=&quot; $10 &quot;;Name=&quot; $10 &quot;;Alias=&quot; alias &quot;;Note=&quot; note; } else if($3==&quot;exon&quot;){ print $1,$2,$3,$4,$5,$6,$7,$8, &quot;Parent=&quot; $10 } }&#39; &gt; TriCa_protein.gff3
+$ cat OnTau.gff | gawk &#39;BEGIN{OFS=&quot;\t&quot;; print &quot;##gff-version 3&quot;; print &quot;##Index-subfeatures 1&quot;; } { if($3==&quot;transcript&quot;){ alias=$13; gsub(/\&quot;/,&quot;&quot;,alias); note=&quot;&quot;; for(i=16;i&lt;=NF;i++){ note=note &quot; &quot; $(i); } gsub(/&quot;/,&quot;&quot;,note); gsub(/;/,&quot;\\\;&quot;,note); gsub(/=/,&quot;\\\=&quot;,note); gsub(/%/,&quot;\\\%&quot;,note); gsub(/&amp;/,&quot;\\\&amp;&quot;,note); gsub(/,/,&quot;\\\,&quot;,note); print $1,$2,$3,$4,$5,$6,$7,$8, &quot;ID=&quot; $10 &quot;;Name=&quot; $10 &quot;;Alias=&quot; alias &quot;;Note=&quot; note; } else if($3==&quot;exon&quot;){ print $1,$2,$3,$4,$5,$6,$7,$8, &quot;Parent=&quot; $10 } }&#39; &gt; OnTau_protein.gff3
+$ cat AsVe.gff | gawk &#39;BEGIN{OFS=&quot;\t&quot;; print &quot;##gff-version 3&quot;; print &quot;##Index-subfeatures 1&quot;; } { if($3==&quot;transcript&quot;){ alias=$13; gsub(/\&quot;/,&quot;&quot;,alias); note=&quot;&quot;; for(i=16;i&lt;=NF;i++){ note=note &quot; &quot; $(i); } gsub(/&quot;/,&quot;&quot;,note); gsub(/;/,&quot;\\\;&quot;,note); gsub(/=/,&quot;\\\=&quot;,note); gsub(/%/,&quot;\\\%&quot;,note); gsub(/&amp;/,&quot;\\\&amp;&quot;,note); gsub(/,/,&quot;\\\,&quot;,note); print $1,$2,$3,$4,$5,$6,$7,$8, &quot;ID=&quot; $10 &quot;;Name=&quot; $10 &quot;;Alias=&quot; alias &quot;;Note=&quot; note; } else if($3==&quot;exon&quot;){ print $1,$2,$3,$4,$5,$6,$7,$8, &quot;Parent=&quot; $10 } }&#39; &gt; AsVe_protein.gff3
+$ cat DePo.gff | gawk &#39;BEGIN{OFS=&quot;\t&quot;; print &quot;##gff-version 3&quot;; print &quot;##Index-subfeatures 1&quot;; } { if($3==&quot;transcript&quot;){ alias=$13; gsub(/\&quot;/,&quot;&quot;,alias); note=&quot;&quot;; for(i=16;i&lt;=NF;i++){ note=note &quot; &quot; $(i); } gsub(/&quot;/,&quot;&quot;,note); gsub(/;/,&quot;\\\;&quot;,note); gsub(/=/,&quot;\\\=&quot;,note); gsub(/%/,&quot;\\\%&quot;,note); gsub(/&amp;/,&quot;\\\&amp;&quot;,note); gsub(/,/,&quot;\\\,&quot;,note); print $1,$2,$3,$4,$5,$6,$7,$8, &quot;ID=&quot; $10 &quot;;Name=&quot; $10 &quot;;Alias=&quot; alias &quot;;Note=&quot; note; } else if($3==&quot;exon&quot;){ print $1,$2,$3,$4,$5,$6,$7,$8, &quot;Parent=&quot; $10 } }&#39; &gt; DePo_protein.gff3
+
+
+
+### sorting mRNA transcript matches by position ###
+$ for sample in AA AB AE AF AH AI AJ AK;
+do
+grep -v &quot;^#&quot; ${sample}_mrna_monoAtLeast_2x.gff3 | awk &#39;$3==&quot;HSP&quot;&#39; | sort -k1,1 -k4,4n | awk &#39;{split($NF,GENE_INFO,&quot;;&quot;); split(GENE_INFO[1],ID,&quot;=&quot;); print $1,$4,$5,$7,ID[2]}&#39; OFS=&quot;\t&quot; &gt; ${sample}.sorted;
+done;
+
+### sorting protein transcript matches by position ###
+$ for sample in TeMo TriCa AsVe DePo OnTau;
+do
+grep -v &quot;^#&quot; ${sample}_protein.gff3 | awk &#39;$3==&quot;exon&quot;&#39; | sort -k1,1 -k4,4n  | awk &#39;{split($9,GENE_INFO,&quot;;&quot;); split(GENE_INFO[1],ID,&quot;=&quot;); print $1,$4,$5,$7,ID[2]}&#39; OFS=&quot;\t&quot; &gt; ${sample}.sorted;
+done;
+
+### intersection of single-exon genes with CDSs of mRNA and protein transcripts #
+bedtools intersect -wao -f 0.01 -a single-exons_genes_matches.sorted -b AA.sorted AB.sorted AE.sorted AF.sorted AH.sorted AI.sorted AJ.sorted AK.sorted TeMo.sorted TriCa.sorted AsVe.sorted DePo.sorted OnTau.sorted -sorted -names AA AB AE AF AH AI AJ AK TeMo TriCa AsVe DePo OnTau &gt; overlap_se_genes_with_mRNAs_and_prot.bed
+
+</code></pre>
+
+<p>The results are here: <code>/env/cns/proj/projet_CSU/Annotation/post_gmove_files</code></p>
+
+<p>Some R code follows in order to list single-exon genes that we can remove:</p>
+
+<pre><code class="R">&gt; source(&quot;single_exon_genes_intersections_with_mRNA_and_prot_CDSs.R&quot;)
+&gt; table_creation_B(&quot;single-exons_genes_matches.sorted&quot;, &quot;overlap_se_genes_with_mRNAs_and_prot.bed&quot;, &quot;se_genes_overlaps.tab&quot;)
+&gt; final_info = read.delim(&quot;se_genes_overlaps.tab&quot;,header=F, stringsAsFactors=F)
+&gt; colnames(final_info) = c(&quot;scaffold&quot;,&quot;start&quot;,&quot;end&quot;,&quot;gene&quot;,&quot;AA&quot;,&quot;AB&quot;,&quot;AE&quot;,&quot;AF&quot;,&quot;AH&quot;,&quot;AI&quot;,&quot;AJ&quot;,&quot;AK&quot;,&quot;TeMo&quot;,&quot;TriCa&quot;,&quot;AsVe&quot;,&quot;DePo&quot;,&quot;OnTau&quot;,&quot;overlap_counts&quot;)
+
+### read tables ###
+&gt; se_genes_with_lengths = read.delim(&quot;/pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove/single-exon_genes_lengths.tab&quot;,header=F, stringsAsFactors=F)
+&gt; pfam_blastp = read.delim(&quot;/pathTo/pipeline3_mito/union_pfam_10e-5_blastp_hits.tab&quot;,header=F, stringsAsFactors=F)
+
+&gt; cond_mRNA = apply(final_info[,5:12],1,function(x) any(x==TRUE))
+&gt; cond_prot = apply(final_info[,13:17],1,function(x) any(x==TRUE))
+&gt; cond_TeMo = (final_info$TeMo==TRUE)
+&gt; cond_mRNA_2_samples = apply(final_info[,5:12],1,function(x) sum(x==TRUE)&gt;=2)
+
+&gt; genes_to_remove_2 = final_info[!((cond_mRNA &amp; cond_prot) | cond_mRNA_2_samples | cond_TeMo),]
+&gt; genes_to_really_exclude_2 = setdiff(genes_to_remove_2$gene, intersect(genes_to_remove_2$gene, pfam_blastp$V1))
+
+&gt; final_info_genes_excluded = final_info[final_info$gene %in% genes_to_really_exclude_2, ]
+&gt; write.table(final_info_genes_excluded$gene,&quot;single-exon_genes_to_remove_option_extra&quot;, row.names=F, col.names=F, quote=F, sep=&quot;\t&quot; )
+</code></pre>
+
+<p><a name="genes-to-remove"></a></p>
+
+<h3>genes to remove</h3>
+
+<pre><code class="bash">$ cd /pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove
+$ genes_with_pfam_blastp_hits=/pathTo/pipeline3_mito/union_pfam_10e-5_blastp_hits.tab
+$ gene_TE_tag=/pathTo/pipeline4_mito/gene_tagged_te
+
+$ fgrep -v -f $genes_with_pfam_blastp_hits $gene_TE_tag &gt; genes_TE_tagged_WO_pfam_blastp_hits_NEW_RepeatMod
+
+$ gene_TE_tagged_WO_proteic_hit=/pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove/genes_TE_tagged_WO_pfam_blastp_hits_NEW_RepeatMod
+
+$ genes_se_with_ratio_UTR_high_and_no_proteic_support=/pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove/only_rna_withUTRCDS_higher80p_and_singlexon
+</code></pre>
+
+<p>In the end, we exclude 3 types of genes:</p>
+
+<ol>
+<li>TE tagged genes without any pfam/blastp hit</li>
+<li>single-exon genes predicted by RNA-Seq only that are composed of &gt;80% untranslated regions and have not any pfam/blastp hit</li>
+<li>the <code>single-exon_genes_to_remove_option_extra</code> gene set created in the section <a href="#intersect-single-exon-genes-with-cdss-of-mrna-and-protein-transcripts">intersect single-exon genes</a></li>
+</ol>
+
+<pre><code class="bash">$ cat $gene_TE_tagged_WO_proteic_hit $genes_se_with_ratio_UTR_high_and_no_proteic_support single-exon_genes_to_remove_option_extra | sort | uniq &gt; genes_to_remove_mono_exon_filter_included_NEW_RepeatMod
+
+$ wc -l genes_to_remove_mono_exon_filter_included_NEW_RepeatMod
+3264 genes_to_remove_mono_exon_filter_included_NEW_RepeatMod
+</code></pre>
+
+<p><a name="final-genes"></a></p>
+
+<h3>final genes</h3>
+
+<pre><code class="bash">### gff with final genes ###
+$ fgrep -v -f genes_to_remove_mono_exon_filter_included_NEW_RepeatMod gmove_filter.utr_trimmed.gff &gt; final_genes_NEW_RepeatMod.gff
+
+$ awk &#39;$3==&quot;mRNA&quot;&#39; final_genes_NEW_RepeatMod.gff | wc -l
+21435
+
+$ annot_report -gff final_genes_NEW_RepeatMod.gff -o final_genes_NEW_RepeatMod.stats -cl /pathTo/pipeline2_mito/Tenebrio_molitor_v1_with_mito.sorted.len
+
+$ cat final_genes_NEW_RepeatMod.stats
+Nombre de genes                                   21435
+Nombre de genes sans intron                       4898 (22%)
+Taille des genes en nt. (moy. : med.)             7590.29 : 1779
+Taille des genes sans UTR (moy. : med.)           5785.70 : 1147
+Nombre d&#39;exons / gene (moy. : med.)               4.15 : 3
+Nombre d&#39;exons / gene pluri (moy. : med.)         5.08 : 4
+Taille des CDS en nt. (moy. : med.)               1177.05 : 783
+Taille des CDS gene pluri en nt. (moy. : med.)    1356.88 : 1071
+Couverture en bases codante                       25230147 (8.8%)
+Nombre d&#39;introns                                  67414
+Taille des introns en nt. (moy. : med.)           1465.37 : 55
+% contigs avec un gene min. (% en bases)          82.9% (99.2%)
+
+$ jobify -b --chrono -q small -e e.pep -o o.pep -J pep &quot;gff2fasta -i final_genes_NEW_RepeatMod.gff -b /pathTo/pipeline2_mito/Tenebrio_molitor_v1_WITH_MITO.fasta -o final_genes_NEW_RepeatMod.pep.fa -ass -prot 1 -type CDS&quot;
+
+$ fgrep -v -f genes_to_remove_mono_exon_filter_included_NEW_RepeatMod single-exon_genes.gff &gt; single-exon_genes_AFTER_FILTERS.gff
+</code></pre>
+
+<p>So, the final gff file is <code>/env/cns/proj/projet_CSU/Annotation/post_gmove_files/final_genes_NEW_RepeatMod.gff</code></p>
+
+<p>Following this pipeline, we predicted 21435 genes with 4 exons per gene on average.  </p>
+
+<p><a name="busco"></a></p>
+
+<h2>Busco</h2>
+
+<p>Gene completion was evaluated on predicted genes using <a href="https://pubmed.ncbi.nlm.nih.gov/31020564/">BUSCO</a> v5.0.0 with insecta (odb10) <a href="https://busco-data.ezlab.org/v5/data/lineages/insecta_odb10.2020-09-10.tar.gz">file</a>, which contains 1367 genes</p>
+
+<p>To launch <code>busco</code> research, do:</p>
+
+<pre><code class="bash">$ cd /pathTo/pipeline2_mito/Gmove_Intron_150kb/gmove
+$ ccc_msub busco_NEW.sh 
+</code></pre>
+
+<p>A summary of the results:</p>
+
+<blockquote>
+<p>C:96.5%[S:95.9%,D:0.6%],F:0.9%,M:2.6%,n:1367<br>
+    1319    Complete BUSCOs (C=Complete)<br>
+    1311    Complete and single-copy BUSCOs (S)<br>
+    8   Complete and duplicated BUSCOs (D)<br>
+    12  Fragmented BUSCOs (F)<br>
+    36  Missing BUSCOs (M)<br>
+    1367    Total BUSCO groups searched</p>
+</blockquote>
+
+<p>More details on BUSCO results can be found here: <code>/env/cns/proj/projet_CUH/scratch/gmove/again_with_prot_cov50/pipeline2_mito/Gmove_Intron_150kb/gmove/Busco</code></p>
+
+<p><a name="brh-best-reciprocal-hits"></a></p>
+
+<h2>BRH (Best Reciprocal Hits)</h2>
+
+<p>Another way to assess the quality of the annotation is to focus on orthologous genes between <em>T.molitor</em> and <em>T.castaneum</em> (by using the BRH method) and compare through plotting :</p>
+
+<ul>
+<li>the lengths of the orthologous proteins and</li>
+<li>the number of exons</li>
+</ul>
+
+<p>For that purpose 2 scripts were employed:</p>
+
+<ul>
+<li><code>annot_quality_NEW</code> (a script used by RDbioseq team <code>annot_quality</code> corrected by me but not yet submitted with svn) and </li>
+<li>an R script made by me for plotting <code>plot_CDS_EXON_BRH_modif_png.R</code>.</li>
+</ul>
+
+<blockquote>
+<p>P.S. : annot_quality_NEW also generates the equivalent plots but there are some differences on the level of shrinkage of values which I have not yet investigated to understand.</p>
+</blockquote>
+
+<h3>Plots <em>T.molitor</em> against <em>T.castaneum</em> protein lengths</h3>
+
+<h4>with annot_quality (dual graph)</h4>
+
+<p><img src="size_Prot1_Prot2.dual_TeMo_vs_TriCa.png" alt="alt text" title="annot_quality graph with T.molitor as reference and T.castaneum as predicted values"></p>
+
+<h4>with my script (simple version)</h4>
+
+<p><img src="Molitor_VS_Tribolium_CDS_graph.png" alt="alt text" title="plot_CDS_EXON_BRH_modif_png.R graph with T.molitor as reference and T.castaneum as predicted values"></p>
+
+<h4>with my script by coloring the density of points</h4>
+
+<p><img src="Molitor_VS_Tribolium_CDS_graph_SECONDARY.png" alt="alt text" title="plot_CDS_EXON_BRH_modif_png.R graph with T.molitor as reference and T.castaneum as predicted values"></p>
+
+<h3>Plots <em>T.molitor</em> against <em>T.castaneum</em> number of exons per protein</h3>
+
+<h4>with annot_quality (dual graph)</h4>
+
+<p><img src="nbex_Prot1_Prot2.dual_TeMo_vs_TriCa.png" alt="alt text" title="annot_quality graph T.molitor as reference and T.castaneum as predicted values"></p>
+
+<h4>with my script (simple version)</h4>
+
+<p><img src="Molitor_VS_Tribolium_EXONS_graph.png" alt="alt text" title="plot_CDS_EXON_BRH_modif_png.R graph with T.molitor as reference and T.castaneum as predicted values"></p>
+
+<h4>with my script by coloring the density of points</h4>
+
+<p><img src="Molitor_VS_Tribolium_EXONS_graph_SECONDARY.png" alt="alt text" title="plot_CDS_EXON_BRH_modif_png.R graph with T.molitor as reference and T.castaneum as predicted values"></p>
+
+<h3>Density plot of <em>T.molitor</em> against <em>T.castaneum</em> for protein lengths</h3>
+
+<p><img src="Molitor_VS_Tribolium_CDS_dens.png" alt="alt text" title="plot_CDS_EXON_BRH_modif_png.R graph with T.molitor as reference and T.castaneum as predicted values"></p>
+
+<h3>Density plot of <em>T.molitor</em> against <em>T.castaneum</em> for number of exons per protein</h3>
+
+<p><img src="Molitor_VS_Tribolium_EXONS_dens.png" alt="alt text" title="plot_CDS_EXON_BRH_modif_png.R graph with T.molitor as reference and T.castaneum as predicted values"></p>
+</body></html>
