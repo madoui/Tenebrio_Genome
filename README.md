@@ -10,7 +10,11 @@ For more details on the genome assembly method, you can read the notebook assemb
 For more details on the genome annotation, you can read the notebook annotation_workflow.html. The genome annotation is based on the GMOVE annotater available at https://github.com/institut-de-genomique/Gmove
 ## This work is part of the Tenebrio genomic project H2020 FARMYNG
 https://www.farmyng.eu/ 
-Work package 5:Chromosome-scale  assembly  of  the  yellow  mealwormgenome
+
+## Licenses
+All codes and scripts in the annotation and assembly folder are under the X license. All Files in the data folder are under the CC0 LICENSE
+
+
 
 ###
 For more details on the project, scripts and data please contact us
