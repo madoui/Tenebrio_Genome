@@ -11,7 +11,7 @@ For more details on the genome assembly method, you can read the notebook assemb
 For more details on the genome annotation, you can read the notebook annotation_workflow.html. The genome annotation is based on the GMOVE annotater available at https://github.com/institut-de-genomique/Gmove from Dubarry et al., Gmove a tool for eukaryotic gene predictions using various evidences [version 1; not peer reviewed]. F1000Research 2016, 5(ISCB Comm J):681 (poster) (https://doi.org/10.7490/f1000research.1111735.1) 
 
 ## This work is part of the Tenebrio genomic project H2020 FARMYNG
-https://www.farmyng.eu/ 
+For information about the FARMYNG project, visit the project web page at https://www.farmyng.eu/ 
 
 ## Licenses
 All codes and scripts in the annotation and assembly folder are under the GPL-3.0 license. Other underlying data are under the CC0 LICENSE.
