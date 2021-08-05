@@ -1,5 +1,5 @@
 # The Tenebrio Genome project
-The yellow mealworm beetle, <i>Tenebrio molitor</i>, is a promising alternative protein source for animal and human nutrition. Here, we provide the methods and data to construct a 280Mb mealworm genome to a chromosome-scale assembly now available at https://www.ebi.ac.uk/ena/browser/view/CAJRHG010000000
+The yellow mealworm beetle, <i>Tenebrio molitor</i>, is a promising alternative protein source for animal and human nutrition. Here, we provide the methods, data and a chromosome-scale assembly of the 280Mb mealworm genome now available at https://www.ebi.ac.uk/ena/browser/view/CAJRHG010000000
 
 ## Underlying and extended data
 In this repository, you will find all the detailed bioinformatic workflows and the methods versions used for the mealworm genome assembly and genome annotation.
