@@ -17,6 +17,6 @@ For information about the FARMYNG project, visit the project web page at https:/
 All codes and scripts in the annotation and assembly folder are under the GPL-3.0 license. Other underlying data are under the CC0 LICENSE. For more details on the project, scripts and data please, contact us at the following email adresses: eelefthe@genoscope.cns.fr or amine.madoui@gmail.com
 
 ## Citation
-Eleftheriou et <i>al</i>., 2021. Chromosome-scale assembly of the yellow mealworm genome. <i> in prep</i>
+Eleftheriou et <i>al</i>., 2021. Chromosome-scale assembly of the yellow mealworm genome. Eleftheriou E, Aury J, Vacherie B et al. Chromosome-scale assembly of the yellow mealworm and genome [version 1; peer review: awaiting peer review]. Open Research Europe 2021, 1:94 (https://doi.org/10.12688/openreseurope.13987.1)
 
 
